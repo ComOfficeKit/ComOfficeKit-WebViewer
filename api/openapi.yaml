@@ -1,0 +1,142 @@
+openapi: 3.1.0
+info:
+  title: ComOffice viewer service
+  version: 0.1.0
+  summary: A document's pages as images and the document as PDF, for <comofficekit-viewer>.
+  description: |
+    The contract between the web component (viewer/comofficekit-viewer.js) and a service that draws documents with
+    the ComOffice SDK. server/ implements it in .NET; any back end that answers these requests the same way can serve
+    the component.
+
+    A document is sent once, kept open under an id, and drawn a page at a time as it is asked for. Pages count from 1.
+    An id is opaque: the component only sends it back.
+  license:
+    name: MIT
+    identifier: MIT
+paths:
+  /documents:
+    post:
+      summary: Open a document
+      description: The document is the request body. Its format comes from the file name in `name`.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: The file's name, such as report.docx. Only its extension is used.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        '201':
+          description: Opened.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+        '400':
+          $ref: '#/components/responses/Problem'
+        '413':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+        '504':
+          $ref: '#/components/responses/Problem'
+  /documents/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: A document already open
+      description: What POST answered for it. For a document the host's own server opened, and gave the page its id.
+      responses:
+        '200':
+          description: The document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+        '404':
+          description: No document is open with this id.
+    delete:
+      summary: Close a document
+      responses:
+        '204':
+          description: Closed, and the service's copy deleted.
+        '404':
+          description: No document is open with this id.
+  /documents/{id}/pages/{page}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - name: page
+        in: path
+        required: true
+        description: The page, from 1.
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: One page as PNG
+      parameters:
+        - name: dpi
+          in: query
+          description: Dots per inch. 96 draws a page at the size a screen shows it at 100 %.
+          schema: { type: number, minimum: 24, maximum: 300, default: 96 }
+      responses:
+        '200':
+          description: The page.
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        '404':
+          description: No such document or page.
+        '504':
+          $ref: '#/components/responses/Problem'
+  /documents/{id}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: The document as PDF
+      description: Sent with no file name, so a browser shows it rather than saving it.
+      responses:
+        '200':
+          description: The PDF.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '404':
+          description: No document is open with this id.
+        '504':
+          $ref: '#/components/responses/Problem'
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    Document:
+      type: object
+      required: [id, pages, kind, fonts]
+      properties:
+        id: { type: string }
+        pages: { type: integer, minimum: 0 }
+        kind: { type: string, enum: [Word, Spreadsheet, Presentation] }
+        fonts:
+          description: Each font the document asked for that the service drew in another.
+          type: array
+          items:
+            type: object
+            required: [requested, used]
+            properties:
+              requested: { type: string }
+              used: { type: string }
+  responses:
+    Problem:
+      description: Refused, with the reason in detail (RFC 9457).
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }

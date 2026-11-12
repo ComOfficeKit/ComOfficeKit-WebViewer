@@ -1,0 +1,19 @@
+<Project>
+  <!--
+    ComOfficeKit comes from packages/ (see nuget.config), at the highest version found there, prerelease included.
+    Pass -p:ComOfficeKitVersion=<version> to pin one.
+  -->
+  <PropertyGroup>
+    <ComOfficeKitVersion Condition="'$(ComOfficeKitVersion)' == ''">*-*</ComOfficeKitVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The engine is x64 only, on Windows and Linux. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Built for .NET 8, the oldest the library supports; RollForward runs it on a newer runtime too. -->
+    <RollForward>Major</RollForward>
+    <!-- Package versions are written in the project itself. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>
+  </PropertyGroup>
+</Project>

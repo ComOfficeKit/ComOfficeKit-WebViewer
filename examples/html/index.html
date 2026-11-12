@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ComOffice viewer: plain HTML</title>
+<!--
+  A page on its own site that shows documents through a viewer service on another one. The service must allow this
+  page's origin (its AllowedOrigins setting). The service's address comes from ?service=, or is
+  http://localhost:5000/. See ../README.md.
+-->
+<style>
+  body { margin: 0; font: 15px system-ui, sans-serif; color: #1d2329; background: #f8f9fa; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+  h1 { font-size: 20px; margin: 0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  comofficekit-viewer { height: 70vh; background: #fff; }
+  #events { margin: 0; max-height: 8em; overflow: auto; font: 12px ui-monospace, monospace; color: #5c6670; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ComOffice viewer</h1>
+  <div class="controls">
+    <label>A file of yours: <input type="file" id="picker" accept=".docx,.xlsx,.xlsm,.pptx,.csv,.tsv"></label>
+    <label>Or an address: <input type="url" id="address" placeholder="https://example.com/report.docx" size="36"></label>
+    <button type="button" id="show">Show</button>
+  </div>
+  <comofficekit-viewer id="viewer"></comofficekit-viewer>
+  <pre id="events" aria-live="polite"></pre>
+</main>
+<script type="module">
+const service = new URL(new URLSearchParams(location.search).get('service') ?? 'http://localhost:5000/');
+if (!service.pathname.endsWith('/')) service.pathname += '/';
+
+// The component comes from the service, and so is always the version that service answers to.
+await import(new URL('comofficekit-viewer.js', service).href);
+
+const viewer = document.getElementById('viewer');
+viewer.service = service.href;
+
+const log = text => {
+  const events = document.getElementById('events');
+  events.textContent = `${new Date().toLocaleTimeString()}  ${text}\n${events.textContent}`;
+};
+viewer.addEventListener('load', e => log(`load: ${e.detail.pages} pages, ${e.detail.kind}`));
+viewer.addEventListener('error', e => log(`error: ${e.detail.message}`));
+viewer.addEventListener('pagechange', e => log(`page ${e.detail.page}`));
+
+document.getElementById('picker').addEventListener('change', e => {
+  const file = e.target.files[0];
+  // The component says what went wrong in its toolbar, and in its error event.
+  if (file) viewer.open(file).catch(() => {});
+});
+document.getElementById('show').addEventListener('click', () => {
+  const address = document.getElementById('address').value.trim();
+  if (address) viewer.src = address;
+});
+</script>
+</body>
+</html>

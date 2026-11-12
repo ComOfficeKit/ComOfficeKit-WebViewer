@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!--
+    The viewer service: a document's pages as PNG and the document as PDF, for <comofficekit-viewer>
+    (../viewer/comofficekit-viewer.js), which it serves beside them, with a page to try it (wwwroot/index.html).
+    It takes ComOfficeKit from ../packages/ (scripts/fetch-package.sh or .ps1).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- The licence an application is bound to names the assembly that activates it: this one. -->
+    <AssemblyName>comofficekit-viewer-service</AssemblyName>
+    <RootNamespace>ComOfficeKit.ViewerService</RootNamespace>
+    <Version>0.1.0</Version>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ComOfficeKit" Version="$(ComOfficeKitVersion)" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The component, beside the program, which serves it at /comofficekit-viewer.js. -->
+    <None Include="../viewer/comofficekit-viewer.js" Link="comofficekit-viewer.js"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

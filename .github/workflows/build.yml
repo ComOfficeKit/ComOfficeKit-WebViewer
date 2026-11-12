@@ -1,0 +1,51 @@
+# Builds the viewer service on Windows and Linux against the latest release of the ComOffice .NET package, and checks
+# the component's syntax, and builds the React and Vue starters. Building needs no licence key; running does.
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: The package, from the latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-package.sh
+      - name: Build
+        run: dotnet publish server -c Release -r ${{ matrix.rid }} --self-contained false -o publish -p:TreatWarningsAsErrors=true
+      - name: The component parses
+        run: node --check viewer/comofficekit-viewer.js
+  starters:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [react, vue]
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install, exactly as package-lock.json pins it
+        run: npm ci --ignore-scripts
+      - name: Build
+        run: npm run build
