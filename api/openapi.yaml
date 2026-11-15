@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: ComOffice viewer service
-  version: 0.1.0
-  summary: A document's pages as images and the document as PDF, for <comofficekit-viewer>.
+  version: 0.2.0
+  summary: A document's pages as images, their text, and the document as PDF, for <comofficekit-viewer>.
   description: |
     The contract between the web component (viewer/comofficekit-viewer.js) and a service that draws documents with
     the ComOffice SDK. server/ implements it in .NET; any back end that answers these requests the same way can serve
@@ -10,6 +10,10 @@ info:
 
     A document is sent once, kept open under an id, and drawn a page at a time as it is asked for. Pages count from 1.
     An id is opaque: the component only sends it back.
+
+    A page's text comes with where it is drawn, so the component can lay it over the page's image, transparent, to be
+    selected and found. It is in points (1/72 inch) from the page's top-left corner, y down: a point is dpi / 72 pixels
+    of the page's image.
   license:
     name: MIT
     identifier: MIT
@@ -89,6 +93,47 @@ paths:
           description: No such document or page.
         '504':
           $ref: '#/components/responses/Problem'
+  /documents/{id}/pages/{page}/text:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - name: page
+        in: path
+        required: true
+        description: The page, from 1.
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: One page's text and where it is drawn
+      responses:
+        '200':
+          description: The page's text.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageText' }
+        '404':
+          description: No such document or page.
+        '504':
+          $ref: '#/components/responses/Problem'
+  /documents/{id}/text:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: Every page's text, for searching
+      responses:
+        '200':
+          description: Each page's text, in order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pages]
+                properties:
+                  pages:
+                    type: array
+                    items: { $ref: '#/components/schemas/PageText' }
+        '404':
+          description: No document is open with this id.
+        '504':
+          $ref: '#/components/responses/Problem'
   /documents/{id}/pdf:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -129,6 +174,50 @@ components:
             properties:
               requested: { type: string }
               used: { type: string }
+    PageText:
+      description: The text a page draws, in lines, in the order they are drawn.
+      type: object
+      required: [width, height, lines, text]
+      properties:
+        width: { type: number, description: The page's width in points. }
+        height: { type: number, description: The page's height in points. }
+        text: { type: string, description: Every line's text, separated by line feeds. }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/PageTextLine' }
+    PageTextLine:
+      description: |
+        Text along one baseline. The line starts at (x, baseline) and is turned rotation degrees clockwise about that
+        point; its box and its spans are given before the turn. Where two spans were drawn apart, text has a space
+        between them that no span covers.
+      type: object
+      required: [text, x, y, width, height, baseline, rotation, spans]
+      properties:
+        text: { type: string }
+        x: { type: number }
+        y: { type: number, description: The top of the line's box. }
+        width: { type: number }
+        height: { type: number }
+        baseline: { type: number }
+        rotation: { type: number, minimum: -180, maximum: 180 }
+        spans:
+          type: array
+          items: { $ref: '#/components/schemas/PageTextSpan' }
+    PageTextSpan:
+      description: A stretch of a line in one size at one baseline.
+      type: object
+      required: [start, length, x, width, baseline, fontSize, advances]
+      properties:
+        start: { type: integer, minimum: 0, description: Where it starts in the line's text, in UTF-16 code units. }
+        length: { type: integer, minimum: 0 }
+        x: { type: number }
+        width: { type: number }
+        baseline: { type: number }
+        fontSize: { type: number }
+        advances:
+          description: Each code unit's advance in points, length of them.
+          type: array
+          items: { type: number }
   responses:
     Problem:
       description: Refused, with the reason in detail (RFC 9457).

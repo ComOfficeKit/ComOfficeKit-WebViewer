@@ -4,8 +4,8 @@
 ComOffice .NET SDK, and the page shows one image per page. The browser needs no plug-in and no Office, and it runs
 none of the document's code.
 
-The component is view only: it scrolls, zooms, moves between pages and opens the document as PDF. Editing is not
-part of it.
+The component is view only: it scrolls, zooms, moves between pages and opens the document as PDF. Each page's text
+lies over its image, transparent, so it can be selected, copied and searched. Editing is not part of it.
 
 This repository holds:
 
@@ -18,7 +18,8 @@ This repository holds:
 
 ## Try it
 
-You need .NET 8 or later on Windows x64 or Linux x64, and a ComOffice licence key. The evaluation key in
+You need .NET 8 or later on Windows x64 or Linux x64, the ComOffice .NET package 1.9.0 or later, and a ComOffice
+licence key. The evaluation key in
 [the ComOffice for Windows README](https://github.com/ComOfficeKit/ComOfficeKit-Windows#readme) works without signing
 up, until the date given there.
 
@@ -66,6 +67,7 @@ its id. The browser then never handles the file:
 | `zoom` | `1` is 100 %. Left out, a page wider than the view is fitted to its width |
 | `credentials` | `include` sends cookies to the service and to `src`'s host |
 | `toolbar` | `none` hides the toolbar |
+| `text-layer` | `none` leaves out the text laid over each page, and the search box with it |
 
 ### Properties, methods and events
 
@@ -73,14 +75,24 @@ its id. The browser then never handles the file:
 - `close()` closes the document the component sent. Removing the element does the same.
 - `goToPage(n)` scrolls to page `n`, counting from 1. The properties `zoom`, `documentId`, `pageCount` and `currentPage`
   give the state.
+- `find(text)` finds text in the whole document, ignoring case, marks every match and goes to the first. It returns a
+  promise of how many there are. `findNext()` and `findPrevious()` move between matches, and `find('')` clears them.
+  The search box in the toolbar does the same: Enter for the next match, Shift+Enter for the one before.
 - The `load` event fires when a document is shown. Its detail is `{ id, pages, kind, fonts }`.
 - The `error` event's detail is `{ message, status }`.
 - The `pagechange` event's detail is `{ page }`.
+- The `find` event's detail is `{ text, matches, current }`.
+
+### Text
+
+The service gives each page's text with where it is drawn, and the component lays it over the page's image,
+transparent. Selecting and copying take the text as the page shows it, and the browser's own find (Ctrl+F) finds it on
+the pages already shown. The search box searches every page. Set `text-layer="none"` to show images only.
 
 ### Styling
 
-Style it from outside with `::part(toolbar)`, `::part(button)`, `::part(status)`, `::part(pages)` and `::part(page)`,
-and with these custom properties:
+Style it from outside with `::part(toolbar)`, `::part(button)`, `::part(search)`, `::part(status)`, `::part(pages)`,
+`::part(page)`, `::part(text-layer)` and `::part(match)`, and with these custom properties:
 - `--comofficekit-viewer-background`
 - `--comofficekit-viewer-gap`
 - `--comofficekit-viewer-shadow`
@@ -117,6 +129,11 @@ docker run --rm -p 8080:8080 -e COMOFFICEKIT_LICENSE_KEY comofficekit-viewer
 
 The image has no fonts of its own. Documents are drawn in the two the package carries until their own fonts are
 installed; the `Dockerfile` shows how.
+
+## Questions and support
+
+Issues are not open on this repository yet. Write to support@comofficekit.com with questions, problems and
+suggestions.
 
 ## Licence
 

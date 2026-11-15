@@ -8,6 +8,8 @@
 //   POST   /documents?name=<file name>      the document as the request body; answers its id, pages, kind and fonts
 //   GET    /documents/{id}                  the same, for a document already open
 //   GET    /documents/{id}/pages/{n}?dpi=96 page n, counting from 1, as PNG
+//   GET    /documents/{id}/pages/{n}/text   page n's text and where it is drawn, to lay over the image
+//   GET    /documents/{id}/text             every page's text, for searching the document
 //   GET    /documents/{id}/pdf              the document as PDF
 //   DELETE /documents/{id}                  closes it and deletes the service's copy
 //   GET    /comofficekit-viewer.js          the web component
@@ -135,6 +137,29 @@ app.MapGet("/documents/{id}/pages/{page:int}", (string id, int page, double? dpi
         using var png = new MemoryStream();
         image.SavePng(png);
         return Results.File(png.ToArray(), "image/png");
+    }));
+
+// The text a page draws and where, in points (a point is dpi / 72 pixels of the page's image): what the component lays
+// over the image so it can be selected and found.
+app.MapGet("/documents/{id}/pages/{page:int}/text", (string id, int page, CancellationToken aborted) =>
+    documents.Run(aborted, limit =>
+        documents.Find(id) is { } entry && page >= 1 && page <= entry.Info.Pages
+            ? Results.Ok(entry.Document.GetPageText(page - 1, limit))
+            : Results.NotFound()));
+
+app.MapGet("/documents/{id}/text", (string id, CancellationToken aborted) =>
+    documents.Run(aborted, limit =>
+    {
+        if (documents.Find(id) is not { } entry)
+        {
+            return Results.NotFound();
+        }
+        var pages = new List<PageText>(entry.Info.Pages);
+        for (int page = 0; page < entry.Info.Pages; page++)
+        {
+            pages.Add(entry.Document.GetPageText(page, limit));
+        }
+        return Results.Ok(new { pages });
     }));
 
 app.MapGet("/documents/{id}/pdf", (string id, CancellationToken aborted) =>
