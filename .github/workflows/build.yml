@@ -3,7 +3,7 @@
 name: Build
 on:
   push:
-    branches: [main, assigned, mainented]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -13,16 +13,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: linux-xarm92 
-            rid: linux-xarm92
+          - os: ubuntu-latest
+            rid: linux-x64
           - os: windows-latest
             rid: win-x64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.1.x
+          dotnet-version: 8.0.x
       - name: The package, from the latest release
         shell: bash
         env:
@@ -33,18 +33,18 @@ jobs:
       - name: The component parses
         run: node --check viewer/comofficekit-viewer.js
   starters:
-    runs-on: linux-xarm92
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [react3, vue]
+        app: [react, vue]
     defaults:
       run:
         working-directory: examples/${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 25
+          node-version: 22
       - name: Install, exactly as package-lock.json pins it
         run: npm ci --ignore-scripts
       - name: Build
